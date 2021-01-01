@@ -13,12 +13,11 @@ admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://kaist-notice-default-rtdb.firebaseio.com"
 });
-
+const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
 const defaultAuth = admin.auth();
 const defaultDatabase = admin.database();
-const formatDate = (date) => {
-    let d = new Date(date),
-        month = '' + (d.getMonth() + 1),
+const formatDate = (d) => {
+    let month = '' + (d.getMonth() + 1),
         day = '' + d.getDate(),
         year = d.getFullYear();
 
@@ -30,7 +29,7 @@ const formatDate = (date) => {
     return [year, month, day].join('-');
 }
 const getDateStringBefore = days => {
-    const a = new Date()
+    const a = JDate()
     a.setDate(a.getDate() - days)
     return formatDate(a)
 }
@@ -126,7 +125,7 @@ const runtimeOpts = {
     memory: '1GB'
 }
 
-exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 9-21 * * *').onRun(async (context) => {
+exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 0-12 * * *').onRun(async (context) => {
     return daily_updater()
 });
 

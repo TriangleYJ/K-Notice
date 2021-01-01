@@ -56,7 +56,7 @@ const top_notice = async (st, ed, days) => {
 
     let stringBuilder = ""
     let cnt = st
-    for(let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st, ed+1)){
+    for(let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st-1, ed)){
         stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
         cnt++
     }
@@ -75,3 +75,8 @@ bot.onText(/n (.+)/g, async (msg, match) => {
     bot.sendMessage(MY_CHAT_ID, `${match[1]}일 동안 가장 인기있었던 공지입니다.`)
     bot.sendMessage(MY_CHAT_ID, await top_notice(1, 10, parseInt(match[1])), {parse_mode: "HTML"})
 })
+
+exports.listener = functions.https.onRequest((request, response) => {
+    functions.logger.info("Hello logs!", {structuredData: true});
+    response.send("Hello from Firebase!");
+});

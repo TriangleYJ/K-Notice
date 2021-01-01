@@ -6,7 +6,6 @@ const admin = require('firebase-admin')
 const {MY_CHAT_ID, BOT_TOKEN, my_id, my_pw} = require('./credentials.js')
 const app = express();
 const MAX_PAGE_COUNT = 50
-const bot = new TelegramBot(BOT_TOKEN, {polling: true})
 
 const serviceAccount = require("./kaist-notice-firebase-adminsdk-1mjhs-7f00632e1e.json");
 
@@ -122,101 +121,12 @@ const daily_updater = async () => {
 }
 /*eslint-enable */
 
-
-const top_notice = async (st, ed, days) => {
-    let db = {}
-
-    const date_string = getDateStringBefore(days)
-    const glv = a => {
-        const v = a["views"]
-        const max_key = Object.keys(v).sort((a,b)=>b-a)[0]
-        return v[max_key]
-    }
-
-    const ref = await defaultDatabase.ref('notices')
-    await ref.orderByChild('date').startAt(sdf(date_string)).once("value", snapshot => {
-        db = snapshot.val()
-    })
-
-
-    let stringBuilder = ""
-    let cnt = st
-    for(let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st, ed+1)){
-        stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
-        cnt++
-    }
-
-    if(cnt === st) return "더이상 존재하지 않습니다!"
-    if(cnt === ed + 1) stringBuilder += `다음 페이지 : /next${days}_${cnt}_${cnt+(ed-st)}`
-    return stringBuilder
-}
-
-
-const main = async () => {
-    await bot.sendMessage(MY_CHAT_ID, "하루 동안 가장 인기있었던 공지입니다.")
-    await bot.sendMessage(MY_CHAT_ID, await top_notice(1, 10, 1), {parse_mode: "HTML"})
-    return null;
-}
-
-
-bot.onText(/\/next(.+)_(.+)_(.+)/, async (msg, match) => {
-    await bot.sendMessage(MY_CHAT_ID, await top_notice(parseInt(match[2]), parseInt(match[3]),parseInt(match[1])), {parse_mode: "HTML"});
-});
-
-
-bot.onText(/n (.+)/g, async (msg, match) => {
-    bot.sendMessage(MY_CHAT_ID, `${match[1]}일 동안 가장 인기있었던 공지입니다.`)
-    bot.sendMessage(MY_CHAT_ID, await top_notice(1, 10, parseInt(match[1])), {parse_mode: "HTML"})
-})
-
-
-app.get('/hello', async (req, res) => {
-    const ref = await defaultDatabase.ref('notices')
-    let dummy = {}
-    await ref.orderByChild('date').startAt('2020.12.25').once("value", snapshot => {
-        dummy = snapshot.val()
-    })
-    await res.send()
-})
-
-app.listen(3000, () => {
-    console.log("Start to listen at 3000!")
-});
-
-exports.api = functions.https.onRequest(app)
-
 const runtimeOpts = {
     timeoutSeconds: 90,
     memory: '1GB'
 }
 
-
-
-exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 * * * *').onRun(async (context) => {
+exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 9-21 * * *').onRun(async (context) => {
     return daily_updater()
 });
 
-exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').onRun(async (context) => {
-    return main()
-});
-
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-
-
-/*
-exports.helloWorld = functions.https.onRequest((request, response) => {
-  functions.logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
-});
-
-exports.mysite = functions.https.onRequest((req, res) => {
-  res.send("Wow");
-});
-*/
-
-/*
-firebase deploy
-firebase emulators:start
- */

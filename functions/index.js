@@ -125,7 +125,7 @@ const runtimeOpts = {
     memory: '1GB'
 }
 
-exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 0-12 * * *').onRun(async (context) => {
+exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 9-21 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
     return daily_updater()
 });
 

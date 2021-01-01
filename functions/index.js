@@ -17,6 +17,7 @@ admin.initializeApp({
 
 const defaultAuth = admin.auth();
 const defaultDatabase = admin.database();
+const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
 const formatDate = (date) => {
     let d = new Date(date),
         month = '' + (d.getMonth() + 1),
@@ -31,7 +32,7 @@ const formatDate = (date) => {
     return [year, month, day].join('-');
 }
 const getDateStringBefore = days => {
-    const a = new Date()
+    const a = JDate()
     a.setDate(a.getDate() - days)
     return formatDate(a)
 }
@@ -84,6 +85,6 @@ app.listen(3000, () => {
 
 exports.api = functions.https.onRequest(app)*/
 
-exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').onRun(async (context) => {
+exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 0,9 * * *').onRun(async (context) => {
     return main()
 });

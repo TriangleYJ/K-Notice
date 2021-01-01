@@ -85,6 +85,6 @@ app.listen(3000, () => {
 
 exports.api = functions.https.onRequest(app)*/
 
-exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 0,9 * * *').onRun(async (context) => {
+exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
     return main()
 });

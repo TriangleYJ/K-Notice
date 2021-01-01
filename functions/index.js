@@ -73,8 +73,7 @@ const main = async () => {
     return null;
 }
 
-
-app.get('/hello', async (req, res) => {
+/*app.get('/hello', async (req, res) => {
     await main()
     await res.send()
 })
@@ -83,29 +82,8 @@ app.listen(3000, () => {
     console.log("Start to listen at 3000!")
 });
 
-exports.api = functions.https.onRequest(app)
+exports.api = functions.https.onRequest(app)*/
 
 exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').onRun(async (context) => {
     return main()
 });
-
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-
-
-/*
-exports.helloWorld = functions.https.onRequest((request, response) => {
-  functions.logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
-});
-
-exports.mysite = functions.https.onRequest((req, res) => {
-  res.send("Wow");
-});
-*/
-
-/*
-firebase deploy
-firebase emulators:start
- */

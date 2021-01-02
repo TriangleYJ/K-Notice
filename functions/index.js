@@ -12,7 +12,6 @@ const port = process.env.PORT || 3000;
 
 
 const serviceAccount = require("./kaist-notice-firebase-adminsdk-1mjhs-7f00632e1e.json");
-const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -141,9 +140,11 @@ const top_notice = async (st, ed, days) => {
 
     let stringBuilder = ""
     let cnt = st
-    for(let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st-1, ed)){
-        stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
-        cnt++
+    if(db) {
+        for (let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st - 1, ed)) {
+            stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
+            cnt++
+        }
     }
 
     if (cnt === st) return "더이상 존재하지 않습니다!"
@@ -197,4 +198,4 @@ exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,
     return main()
 });
 
-exports.notice_listener = functions.https.onRequest(app);
+exports.notice_listener = functions.region('asia-northeast1').https.onRequest(app);

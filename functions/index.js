@@ -95,23 +95,56 @@ const parse = async date_string => {
 
 const daily_updater = async () => {
     const DB_1days = await parse(getDateStringBefore(1))
+    const user_ref = await defaultDatabase.ref('users/triangle/option')
+    let user_pref = {}
+    await user_ref.once("value", snap => {
+        user_pref = snap.val()
+    })
     const ref = await defaultDatabase.ref('notices')
     for (let i of DB_1days) {
-        await ref.orderByChild("href").equalTo(i[5]).once("value", snapshot => {
+        await ref.orderByChild("href").equalTo(i[5]).once("value", async snapshot => {
+            const cur_time = new Date().getTime()
             if (snapshot.exists()) {
-                const my_key = Object.keys(snapshot.val())[0];
-                ref.child(`${my_key}/title`).set(i[0])
-                ref.child(`${my_key}/views/${new Date().getTime()}`).set(i[3])
+                //Determine trending notice
+                const my_prev_obj_raw = snapshot.val()
+                const my_key = Object.keys(my_prev_obj_raw)[0];
+                const my_prev_obj = my_prev_obj_raw[my_key]
+                const last_view_time = my_prev_obj["last_updated"]
+                const last_view = my_prev_obj["views"][last_view_time]
+                const instant_popular = (i[3] - last_view)/(cur_time - last_view_time)
+                const time_to_some_views = (cur_time - Object.keys(my_prev_obj["views"])[0])
+
+
+                const spec = my_prev_obj["specials"]
+                let weight_popular = spec && spec["weight_popular"] ? spec["weight_popular"] * 1.5 : 1
+                let weight_view = spec && spec["weight_view"] ? spec["weight_view"] * 2 : 1
+
+                if(instant_popular > weight_popular * user_pref["thres_popular"]){
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
+                    await ref.child(`${my_key}/specials/weight_popular`).set(weight_popular)
+                }
+                while(time_to_some_views < user_pref["thres_time"] && i[3] > weight_view * user_pref["min_view"]){
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
+                    await ref.child(`${my_key}/specials/weight_view`).set(weight_view)
+                    weight_view *= 2
+                }
+
+                // Update notice
+                await ref.child(`${my_key}/title`).set(i[0])
+                await ref.child(`${my_key}/views/${cur_time}`).set(i[3])
+                await ref.child(`${my_key}/last_updated`).set(cur_time)
             } else {
+                // New notice
                 ref.push({
                     title: i[0],
                     belong: i[1],
                     writer: i[2],
                     views: {
-                        [new Date().getTime()]: i[3]
+                        [cur_time]: i[3]
                     },
                     date: i[4],
-                    href: i[5]
+                    href: i[5],
+                    last_updated: cur_time
                 })
             }
         });
@@ -126,11 +159,7 @@ const top_notice = async (st, ed, days) => {
     let db = {}
 
     const date_string = getDateStringBefore(days)
-    const glv = a => {
-        const v = a["views"]
-        const max_key = Object.keys(v).sort((a, b) => b - a)[0]
-        return v[max_key]
-    }
+    const glv = a => a["views"][a["last_updated"]]
 
     const ref = await defaultDatabase.ref('notices')
     await ref.orderByChild('date').startAt(sdf(date_string)).once("value", snapshot => {

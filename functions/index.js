@@ -190,7 +190,7 @@ app.post(`/webhook`, (req, res) => {
     res.sendStatus(200);
 });
 
-exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 9-21 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
+exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 7-23 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
     return daily_updater()
 });
 

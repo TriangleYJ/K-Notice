@@ -42,8 +42,8 @@ const sdf = str => str.replace(/-/g, ".")
 
 /*eslint-disable */
 const parse = async date_string => {
+    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']})
     try {
-        const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']})
         const page = await browser.newPage()
 
         await page.goto('https://portal.kaist.ac.kr')
@@ -52,9 +52,7 @@ const parse = async date_string => {
             document.querySelector('input[name="password"]').value = pw;
         }, my_id, my_pw);
         await page.click('a[name="btn_login"]');
-
-        await page.waitForNavigation()
-
+        await page.waitForSelector("#ptl_headerArea")
         const parser_until_date = async date => {
             let page_num = 1;
             let list = [];
@@ -89,6 +87,7 @@ const parse = async date_string => {
         return await parser_until_date(new Date(date_string))
 
     } catch (e) {
+        await browser.close()
         functions.logger.error("Crawling Failed! : " + e.toString(), {structuredData: true});
         console.error("Crawling Failed! : " + e.toString(), {structuredData: true});
     }
@@ -194,8 +193,10 @@ exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts
     return daily_updater()
 });
 
+/*
 exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
     return main()
 });
 
 exports.notice_listener = functions.region('asia-northeast1').https.onRequest(app);
+*/

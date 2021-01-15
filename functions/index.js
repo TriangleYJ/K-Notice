@@ -1,8 +1,8 @@
-const functions = require('firebase-functions');
 const express = require('express');
 const puppeteer = require('puppeteer');
 const TelegramBot = require('node-telegram-bot-api');
 const admin = require('firebase-admin');
+const cron = require('node-cron')
 const {MY_CHAT_ID, BOT_TOKEN, my_id, my_pw} = require('./credentials.js');
 const app = express();
 app.use(express.json());
@@ -218,14 +218,14 @@ app.post(`/webhook`, (req, res) => {
     res.sendStatus(200);
 });
 
-exports.notice_updater = functions.region('asia-northeast1').runWith(runtimeOpts).pubsub.schedule('*/10 7-23 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
-    return daily_updater()
+app.listen(port, () => {
+    console.log("Start to listen from " + port)
+})
+
+cron.schedule('7-23 * * * *', () =>{
+    daily_updater()
 });
 
-/*
-exports.notice_alert = functions.region('asia-northeast1').pubsub.schedule('0 9,18 * * *').timeZone('Asia/Tokyo').onRun(async (context) => {
-    return main()
+cron.schedule('0 9,18 * * *', () => {
+    main()
 });
-
-exports.notice_listener = functions.region('asia-northeast1').https.onRequest(app);
-*/

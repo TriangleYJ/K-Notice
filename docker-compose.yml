@@ -1,0 +1,16 @@
+version: '3'
+services:
+  mongodb:
+    image: mongo
+    container_name: "mongodb"
+    restart: always
+    environment:
+      - 'MONGO_HOST=localhost'
+      - 'MONGO_INITDB_ROOT_USERNAME=root'
+      - 'MONGO_INITDB_ROOT_PASSWORD=pazzw0rc1'
+      - 'MONGO_INITDB_DATABASE=kalert'
+    ports:
+      - "27017:27017"
+    volumes:
+      - './db:/data/db'
+

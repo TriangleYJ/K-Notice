@@ -1,25 +1,51 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const TelegramBot = require('node-telegram-bot-api');
-const admin = require('firebase-admin');
-const cron = require('node-cron')
-const {MY_CHAT_ID, BOT_TOKEN, my_id, my_pw} = require('./credentials.js');
+const cron = require('node-cron');
+const {MY_CHAT_ID, BOT_TOKEN, my_id, my_pw, db_pw} = require('./credentials.js');
+const mongoose = require('mongoose');
 const app = express();
 app.use(express.json());
 const MAX_PAGE_COUNT = 50;
-const bot = new TelegramBot(BOT_TOKEN);
+const bot = new TelegramBot(BOT_TOKEN, {polling: true});
 const port = process.env.PORT || 3000;
+const user_pref = {
+    "min_view" : 500,
+    "thres_popular" : 7.5E-5,
+    "thres_time" : 25000000
+};
 
-
-const serviceAccount = require("./kaist-notice-firebase-adminsdk-1mjhs-7f00632e1e.json");
-
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://kaist-notice-default-rtdb.firebaseio.com"
+const db = mongoose.connection;
+db.on('error', console.error);
+db.once('open', function(){
+    console.log("Connected to mongod server");
 });
-const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-const defaultAuth = admin.auth();
-const defaultDatabase = admin.database();
+mongoose.connect(`mongodb://root:${db_pw}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+
+const Schema = mongoose.Schema;
+
+const viewSchema = new Schema({
+    time: String,
+    views: Number
+},{ _id : false })
+
+const noticeSchema = new Schema({
+    belong: String,
+    date: String,
+    href: { type: String, required: true, unique:true},
+    last_updated: String,
+    title: String,
+    views: [viewSchema],
+    writer: String,
+    weight_view: Number,
+    weight_popular: String
+},{ versionKey: false })
+
+const Notice = mongoose.model('Notice', noticeSchema)
+const View = mongoose.model('View', viewSchema)
+
+
+const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
 const formatDate = (d) => {
     let month = '' + (d.getMonth() + 1),
         day = '' + d.getDate(),
@@ -94,82 +120,68 @@ const parse = async date_string => {
 }
 
 const daily_updater = async () => {
-    const DB_1days = await parse(getDateStringBefore(1))
-    const user_ref = await defaultDatabase.ref('users/triangle/option')
-    let user_pref = {}
-    await user_ref.once("value", snap => {
-        user_pref = snap.val()
-    })
-    const ref = await defaultDatabase.ref('notices')
+    const DB_1days = [["test title", "belong", "writer", 123, "2021.01.23", "/href/test/href"]]//await parse(getDateStringBefore(1))
     for (let i of DB_1days) {
-        await ref.orderByChild("href").equalTo(i[5]).once("value", async snapshot => {
+        Notice.findOne({href: i[5]}, async (err, my_prev_obj)=> {
             const cur_time = new Date().getTime()
-            if (snapshot.exists()) {
+            if (my_prev_obj) {
                 //Determine trending notice
-                const my_prev_obj_raw = snapshot.val()
-                const my_key = Object.keys(my_prev_obj_raw)[0];
-                const my_prev_obj = my_prev_obj_raw[my_key]
-                const last_view_time = my_prev_obj["last_updated"]
-                const last_view = my_prev_obj["views"][last_view_time]
+
+/*                const last_view_time = my_prev_obj["last_updated"]
+                console.log(last_view_time)
+                const last_view = my_prev_obj.views.filter(obj => obj.time === last_view_time)[0].views
                 const instant_popular = (i[3] - last_view)/(cur_time - last_view_time)
-                const time_to_some_views = (cur_time - Object.keys(my_prev_obj["views"])[0])
+                const time_to_some_views = (cur_time - my_prev_obj["views"][0]["time"])
 
 
-                const spec = my_prev_obj["specials"]
-                let weight_popular = spec && spec["weight_popular"] ? spec["weight_popular"] * 1.5 : 1
-                let weight_view = spec && spec["weight_view"] ? spec["weight_view"] * 2 : 1
+                let weight_popular = my_prev_obj["weight_popular"] ? my_prev_obj["weight_popular"] * 1.5 : 1
+                let weight_view = my_prev_obj["weight_view"] ? my_prev_obj["weight_view"] * 2 : 1
 
                 if(instant_popular > weight_popular * user_pref["thres_popular"]){
                     await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
-                    await ref.child(`${my_key}/specials/weight_popular`).set(weight_popular)
+                    my_prev_obj.weight_popular = weight_popular
                 }
                 while(time_to_some_views < user_pref["thres_time"] && i[3] > weight_view * user_pref["min_view"]){
                     await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
-                    await ref.child(`${my_key}/specials/weight_view`).set(weight_view)
+                    my_prev_obj.weight_view = weight_view
                     weight_view *= 2
-                }
+                }*/
 
                 // Update notice
-                await ref.child(`${my_key}/title`).set(i[0])
-                await ref.child(`${my_key}/views/${cur_time}`).set(i[3])
-                await ref.child(`${my_key}/last_updated`).set(cur_time)
+                //TODO
+                my_prev_obj.title = i[0]
+                my_prev_obj.last_updated = cur_time
+                my_prev_obj.views.splice(my_prev_obj.views.length, 0, {time : cur_time, views: i[3]})
+                my_prev_obj.save()
             } else {
                 // New notice
-                ref.push({
+                const notice = new Notice({
                     title: i[0],
                     belong: i[1],
                     writer: i[2],
-                    views: {
-                        [cur_time]: i[3]
-                    },
+                    views: [{time:cur_time, views:i[3]}],
                     date: i[4],
                     href: i[5],
                     last_updated: cur_time
                 })
+                notice.save()
             }
-        });
+        })
     }
-
-
     return null;
 }
 
 /*eslint-enable */
+//TODO
 const top_notice = async (st, ed, days) => {
-    let db = {}
-
     const date_string = getDateStringBefore(days)
-    const glv = a => a["views"][a["last_updated"]]
+    const glv = a => a.views.filter(obj => obj.time === a.last_updated)[0].views
 
-    const ref = await defaultDatabase.ref('notices')
-    await ref.orderByChild('date').startAt(sdf(date_string)).once("value", snapshot => {
-        db = snapshot.val()
-    })
-
+    const db = await Notice.find({date: {$gte: sdf(date_string)}})
     let stringBuilder = ""
     let cnt = st
     if(db) {
-        for (let j of Object.values(db).sort((a, b) => glv(b) - glv(a)).slice(st - 1, ed)) {
+        for (let j of db.sort((a, b) => glv(b) - glv(a)).slice(st - 1, ed)) {
             stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
             cnt++
         }
@@ -187,22 +199,6 @@ const main = async () => {
     return null;
 }
 
-/*app.get('/hello', async (req, res) => {
-    await main()
-    await res.send()
-})
-
-app.listen(3000, () => {
-    console.log("Start to listen at 3000!")
-});
-
-exports.api = functions.https.onRequest(app)*/
-
-const runtimeOpts = {
-    timeoutSeconds: 90,
-    memory: '1GB'
-}
-
 bot.onText(/\/next(.+)_(.+)_(.+)/, async (msg, match) => {
     await bot.sendMessage(MY_CHAT_ID, await top_notice(parseInt(match[2]), parseInt(match[3]),parseInt(match[1])), {parse_mode: "HTML"});
 });
@@ -218,14 +214,16 @@ app.post(`/webhook`, (req, res) => {
     res.sendStatus(200);
 });
 
-app.listen(port, () => {
+/*app.listen(port, () => {
     console.log("Start to listen from " + port)
 })
 
-cron.schedule('7-23 * * * *', () =>{
+cron.schedule('*!/2 7-23 * * *', () =>{
     daily_updater()
-});
+}, { timezone : "Asia/Seoul" });
 
 cron.schedule('0 9,18 * * *', () => {
     main()
-});
+}, { timezone : "Asia/Seoul" });*/
+
+daily_updater()

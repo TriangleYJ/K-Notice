@@ -70,3 +70,5 @@ node_modules/
 ngrok.exe
 
 db/
+
+functions/db.json

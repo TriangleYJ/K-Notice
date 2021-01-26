@@ -1,20 +1,19 @@
 const mongoose = require('mongoose');
-const my_db = require('./notice.json')
-
 const db = mongoose.connection;
+const my_db = require("./db.json")
 db.on('error', console.error);
 db.once('open', function(){
     console.log("Connected to mongod server");
 });
-
 mongoose.connect(`mongodb://root:pazzw0rc1@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+mongoose.set('useFindAndModify', false);
 
 const Schema = mongoose.Schema;
 
 const viewSchema = new Schema({
     time: String,
     views: Number
-})
+},{ _id : false })
 
 const noticeSchema = new Schema({
     belong: String,
@@ -24,21 +23,46 @@ const noticeSchema = new Schema({
     title: String,
     views: [viewSchema],
     writer: String,
-})
+    weight_view: Number,
+    weight_popular: String
+},{ versionKey: false })
 
 const Notice = mongoose.model('Notice', noticeSchema)
 const View = mongoose.model('View', viewSchema)
+/*
+Notice.findOne({href:'/ennotice/International/11604116217699'}, async (err, doc) => {
+    const cur_time = new Date().getTime()
+    doc.title = '[KI House] 2020 Korean Speech Contest'
+    doc.last_updated = cur_time
+    doc.views = []
+    doc.views.splice(doc.views.length, 0, {time : cur_time, views :523})
+    doc.save()
+    console.log(doc)
+})
+*/
 
+Notice.find({date: "2021.01.22"}, (err ,doc) => {
+    for(let i in doc){
+        console.log(doc[i].views, doc[i].last_updated)
+    }
+})
+
+/*
 for(let i of Object.values(my_db.notices)){
-    const notice = new Notice({
+    const notice_bases = {
         belong: i.belong,
         date: i.date,
         href: i.href,
         last_updated: i.last_updated,
         title: i.title,
         writer: i.writer,
-        views: []
-    })
+        views: [],
+    }
+    if(i["specials"]){
+        if(i["specials"]["weight_popular"]) notice_bases["weight_popular"] = i["specials"]["weight_popular"]
+        if(i["specials"]["weight_view"]) notice_bases["weight_view"] = i["specials"]["weight_view"] + ""
+    }
+    const notice = new Notice(notice_bases)
     for(let j in i.views){
         notice.views.push(new View({
             time: j,
@@ -50,3 +74,4 @@ for(let i of Object.values(my_db.notices)){
     })
 }
 
+*/

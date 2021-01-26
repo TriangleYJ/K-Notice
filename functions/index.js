@@ -21,14 +21,9 @@ db.once('open', function(){
     console.log("Connected to mongod server");
 });
 mongoose.connect(`mongodb://root:${db_pw}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
-// Test @ local: mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
+// mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
 
 const Schema = mongoose.Schema;
-
-const viewSchema = new Schema({
-    time: String,
-    views: Number
-},{ _id : false })
 
 const noticeSchema = new Schema({
     belong: String,
@@ -36,15 +31,14 @@ const noticeSchema = new Schema({
     href: { type: String, required: true, unique:true},
     last_updated: String,
     title: String,
-    views: [viewSchema],
+    views: {},
     writer: String,
     weight_view: Number,
-    weight_popular: String
+    weight_popular: String,
+    created_at: String,
 },{ versionKey: false })
 
 const Notice = mongoose.model('Notice', noticeSchema)
-const View = mongoose.model('View', viewSchema)
-
 
 const JDate = date => new Date((date ? new Date(date) : new Date()).toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
 const formatDate = (d) => {
@@ -128,11 +122,11 @@ const daily_updater = async () => {
             if (my_prev_obj) {
                 //Determine trending notice
 
-                const last_view_time = my_prev_obj["last_updated"]
-                console.log(last_view_time)
-                const last_view = my_prev_obj.views.filter(obj => obj.time === last_view_time)[0].views
+                const last_view_time = my_prev_obj.last_updated
+                const last_view = my_prev_obj.views[last_view_time]
+                const created_at = my_prev_obj.created_at
                 const instant_popular = (i[3] - last_view)/(cur_time - last_view_time)
-                const time_to_some_views = (cur_time - my_prev_obj["views"][0]["time"])
+                const time_to_some_views = (cur_time - my_prev_obj.views[created_at])
 
 
                 let weight_popular = my_prev_obj["weight_popular"] ? my_prev_obj["weight_popular"] * 1.5 : 1
@@ -149,21 +143,22 @@ const daily_updater = async () => {
                 }
 
                 // Update notice
-                //TODO
                 my_prev_obj.title = i[0]
                 my_prev_obj.last_updated = cur_time
-                my_prev_obj.views.splice(my_prev_obj.views.length, 0, {time : cur_time, views: i[3]})
+                my_prev_obj.set('views.' + cur_time, i[3])
                 my_prev_obj.save()
+
             } else {
                 // New notice
                 const notice = new Notice({
                     title: i[0],
                     belong: i[1],
                     writer: i[2],
-                    views: [{time:cur_time, views:i[3]}],
+                    views: {[cur_time]: i[3]},
                     date: i[4],
                     href: i[5],
-                    last_updated: cur_time
+                    last_updated: cur_time,
+                    created_at: cur_time,
                 })
                 notice.save()
             }
@@ -175,7 +170,7 @@ const daily_updater = async () => {
 /*eslint-enable */
 const top_notice = async (st, ed, days) => {
     const date_string = getDateStringBefore(days)
-    const glv = a => a.views.filter(obj => obj.time === a.last_updated)[0].views
+    const glv = a => a.views[a.last_updated]
 
     const db = await Notice.find({date: {$gte: sdf(date_string)}})
     let stringBuilder = ""

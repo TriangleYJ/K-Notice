@@ -1,19 +1,15 @@
 const mongoose = require('mongoose');
 const db = mongoose.connection;
-const my_db = require("./db.json")
+const my_db = require("./kaist-notice-default-rtdb-export.json")
 db.on('error', console.error);
 db.once('open', function(){
     console.log("Connected to mongod server");
 });
 mongoose.connect(`mongodb://root:pazzw0rc1@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+//mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
 mongoose.set('useFindAndModify', false);
 
 const Schema = mongoose.Schema;
-
-const viewSchema = new Schema({
-    time: String,
-    views: Number
-},{ _id : false })
 
 const noticeSchema = new Schema({
     belong: String,
@@ -21,14 +17,14 @@ const noticeSchema = new Schema({
     href: { type: String, required: true, unique:true},
     last_updated: String,
     title: String,
-    views: [viewSchema],
+    views: {},
     writer: String,
     weight_view: Number,
-    weight_popular: String
+    weight_popular: String,
+    created_at: String,
 },{ versionKey: false })
 
 const Notice = mongoose.model('Notice', noticeSchema)
-const View = mongoose.model('View', viewSchema)
 /*
 Notice.findOne({href:'/ennotice/International/11604116217699'}, async (err, doc) => {
     const cur_time = new Date().getTime()
@@ -41,37 +37,32 @@ Notice.findOne({href:'/ennotice/International/11604116217699'}, async (err, doc)
 })
 */
 
-Notice.find({date: "2021.01.22"}, (err ,doc) => {
+/*Notice.find({date: "2021.01.22"}, (err ,doc) => {
     for(let i in doc){
         console.log(doc[i].views, doc[i].last_updated)
     }
-})
+})*/
 
-/*
+
 for(let i of Object.values(my_db.notices)){
     const notice_bases = {
         belong: i.belong,
         date: i.date,
         href: i.href,
         last_updated: i.last_updated,
+        created_at: Object.keys(i.views)[0],
         title: i.title,
         writer: i.writer,
-        views: [],
+        views: i.views,
     }
     if(i["specials"]){
         if(i["specials"]["weight_popular"]) notice_bases["weight_popular"] = i["specials"]["weight_popular"]
         if(i["specials"]["weight_view"]) notice_bases["weight_view"] = i["specials"]["weight_view"] + ""
     }
     const notice = new Notice(notice_bases)
-    for(let j in i.views){
-        notice.views.push(new View({
-            time: j,
-            views: i.views[j]
-        }))
-    }
     notice.save((err) => {
         console.log(err)
     })
 }
 
-*/
+

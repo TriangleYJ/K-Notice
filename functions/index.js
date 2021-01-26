@@ -21,6 +21,7 @@ db.once('open', function(){
     console.log("Connected to mongod server");
 });
 mongoose.connect(`mongodb://root:${db_pw}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+// Test @ local: mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
 
 const Schema = mongoose.Schema;
 
@@ -120,14 +121,14 @@ const parse = async date_string => {
 }
 
 const daily_updater = async () => {
-    const DB_1days = [["test title", "belong", "writer", 123, "2021.01.23", "/href/test/href"]]//await parse(getDateStringBefore(1))
+    const DB_1days = await parse(getDateStringBefore(1))
     for (let i of DB_1days) {
         Notice.findOne({href: i[5]}, async (err, my_prev_obj)=> {
             const cur_time = new Date().getTime()
             if (my_prev_obj) {
                 //Determine trending notice
 
-/*                const last_view_time = my_prev_obj["last_updated"]
+                const last_view_time = my_prev_obj["last_updated"]
                 console.log(last_view_time)
                 const last_view = my_prev_obj.views.filter(obj => obj.time === last_view_time)[0].views
                 const instant_popular = (i[3] - last_view)/(cur_time - last_view_time)
@@ -145,7 +146,7 @@ const daily_updater = async () => {
                     await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
                     my_prev_obj.weight_view = weight_view
                     weight_view *= 2
-                }*/
+                }
 
                 // Update notice
                 //TODO
@@ -172,7 +173,6 @@ const daily_updater = async () => {
 }
 
 /*eslint-enable */
-//TODO
 const top_notice = async (st, ed, days) => {
     const date_string = getDateStringBefore(days)
     const glv = a => a.views.filter(obj => obj.time === a.last_updated)[0].views
@@ -214,16 +214,14 @@ app.post(`/webhook`, (req, res) => {
     res.sendStatus(200);
 });
 
-/*app.listen(port, () => {
+app.listen(port, () => {
     console.log("Start to listen from " + port)
 })
 
-cron.schedule('*!/2 7-23 * * *', () =>{
+cron.schedule('*/10 7-23 * * *', () =>{
     daily_updater()
 }, { timezone : "Asia/Seoul" });
 
 cron.schedule('0 9,18 * * *', () => {
     main()
-}, { timezone : "Asia/Seoul" });*/
-
-daily_updater()
+}, { timezone : "Asia/Seoul" });

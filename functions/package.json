@@ -1,27 +1,19 @@
 {
-  "name": "functions",
-  "description": "Cloud Functions for Firebase",
+  "name": "knotice-backend",
+  "version": "0.0.1",
+  "description": "KAIST PORTAL notices parser & alerter",
   "scripts": {
-    "lint": "eslint .",
-    "start": "node index.js",
-  },
-  "engines": {
-    "node": "12"
+    "start": "node index.js"
   },
   "main": "index.js",
   "dependencies": {
-    "express": "latest",
-    "firebase-admin": "^9.2.0",
-    "firebase-functions": "^3.11.0",
+    "express": "^4.17.1",
     "mongoose": "^5.11.12",
     "node-cron": "^2.0.3",
     "node-telegram-bot-api": "^0.51.0",
     "puppeteer": "^5.5.0"
   },
   "devDependencies": {
-    "eslint": "^5.12.0",
-    "eslint-plugin-promise": "^4.0.1",
-    "firebase-functions-test": "^0.2.0"
   },
   "private": true
 }

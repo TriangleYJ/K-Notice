@@ -8,7 +8,6 @@ firebase-debug.log*
 firebase-debug.*.log*
 
 # Firebase cache
-.firebase/
 
 # Firebase config
 
@@ -71,4 +70,5 @@ ngrok.exe
 
 db/
 
-functions/db.json
+functions/kaist-notice-default-rtdb-export.json
+functions/credentials.js

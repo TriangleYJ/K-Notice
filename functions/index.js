@@ -2,13 +2,17 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
-const {MY_CHAT_ID, BOT_TOKEN, my_id, my_pw, db_pw} = require('./credentials.js');
 const mongoose = require('mongoose');
+
+const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, DB_USER, DB_PW, WEBHOOK_URL} = process.env;
+const port = process.env.PORT || 3008;
+
 const app = express();
 app.use(express.json());
+const bot = new TelegramBot(BOT_TOKEN);
+bot.setWebHook(WEBHOOK_URL + '/webhook')
+
 const MAX_PAGE_COUNT = 50;
-const bot = new TelegramBot(BOT_TOKEN, {polling: true});
-const port = process.env.PORT || 3000;
 const user_pref = {
     "min_view" : 500,
     "thres_popular" : 7.5E-5,
@@ -20,8 +24,8 @@ db.on('error', console.error);
 db.once('open', function(){
     console.log("Connected to mongod server");
 });
-mongoose.connect(`mongodb://root:${db_pw}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
-// mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
+mongoose.connect(`mongodb://${DB_USER}:${DB_PW}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+//mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
 
 const Schema = mongoose.Schema;
 
@@ -63,7 +67,7 @@ const sdf = str => str.replace(/-/g, ".")
 
 /*eslint-disable */
 const parse = async date_string => {
-    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']})
+    const browser = await puppeteer.launch({executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-setuid-sandbox']})
     try {
         const page = await browser.newPage()
 
@@ -71,7 +75,7 @@ const parse = async date_string => {
         await page.evaluate((id, pw) => {
             document.querySelector('input[name="userId"]').value = id;
             document.querySelector('input[name="password"]').value = pw;
-        }, my_id, my_pw);
+        }, MY_PORTAL_ID, MY_PORTAL_PW);
         await page.click('a[name="btn_login"]');
         await page.waitForSelector("#ptl_headerArea")
         const parser_until_date = async date => {
@@ -114,8 +118,8 @@ const parse = async date_string => {
     }
 }
 
-const daily_updater = async () => {
-    const DB_1days = await parse(getDateStringBefore(1))
+const updater = async (days) => {
+    const DB_1days = await parse(getDateStringBefore(days))
     for (let i of DB_1days) {
         Notice.findOne({href: i[5]}, async (err, my_prev_obj)=> {
             const cur_time = new Date().getTime()
@@ -146,7 +150,7 @@ const daily_updater = async () => {
                 my_prev_obj.title = i[0]
                 my_prev_obj.last_updated = cur_time
                 my_prev_obj.set('views.' + cur_time, i[3])
-                my_prev_obj.save()
+                await my_prev_obj.save()
 
             } else {
                 // New notice
@@ -160,7 +164,7 @@ const daily_updater = async () => {
                     last_updated: cur_time,
                     created_at: cur_time,
                 })
-                notice.save()
+                await notice.save()
             }
         })
     }
@@ -214,9 +218,15 @@ app.listen(port, () => {
 })
 
 cron.schedule('*/10 7-23 * * *', () =>{
-    daily_updater()
+    updater(1)
 }, { timezone : "Asia/Seoul" });
 
 cron.schedule('0 9,18 * * *', () => {
     main()
 }, { timezone : "Asia/Seoul" });
+
+Notice.exists({}, (err, res) => {
+    if(!res){
+        updater(14)
+    }
+})

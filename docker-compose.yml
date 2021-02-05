@@ -1,16 +1,37 @@
 version: '3'
 services:
+  knotice:
+    build: ./functions
+    container_name: "knotice"
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./credentials.env
+      - ./credentials-db.env
+    depends_on:
+      - mongodb
+    networks:
+      my_net:
+
+
   mongodb:
     image: mongo
     container_name: "mongodb"
     restart: always
-    environment:
-      - 'MONGO_HOST=localhost'
-      - 'MONGO_INITDB_ROOT_USERNAME=root'
-      - 'MONGO_INITDB_ROOT_PASSWORD=pazzw0rc1'
-      - 'MONGO_INITDB_DATABASE=kalert'
+    env_file:
+      - ./credentials-db.env
     ports:
       - "27017:27017"
     volumes:
       - './db:/data/db'
+    networks:
+      my_net:
+
+networks:
+  my_net:
+
+volumes:
+  mongodb:
+
 

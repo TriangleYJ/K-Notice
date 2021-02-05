@@ -4,7 +4,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const mongoose = require('mongoose');
 
-const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, DB_USER, DB_PW, WEBHOOK_URL} = process.env;
+const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, WEBHOOK_URL} = process.env;
+const {MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_HOST, MONGO_INITDB_DATABASE} = process.env;
 const port = process.env.PORT || 3008;
 
 const app = express();
@@ -24,7 +25,7 @@ db.on('error', console.error);
 db.once('open', function(){
     console.log("Connected to mongod server");
 });
-mongoose.connect(`mongodb://${DB_USER}:${DB_PW}@localhost/kalert?authSource=admin`, {useNewUrlParser: true})
+mongoose.connect(`mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}/${MONGO_INITDB_DATABASE}?authSource=admin`, {useNewUrlParser: true})
 //mongoose.connect('mongodb://localhost/kalert', {useNewUrlParser: true})
 
 const Schema = mongoose.Schema;

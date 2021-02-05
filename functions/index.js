@@ -66,6 +66,12 @@ const getDateStringBefore = days => {
 const fds = str => str.replace(/\./g, "-")
 const sdf = str => str.replace(/-/g, ".")
 
+const entityMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;' };
+function escapeHtml (string) {
+    return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+        return entityMap[s];
+    });
+}
 /*eslint-disable */
 const parse = async date_string => {
     const browser = await puppeteer.launch({executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-setuid-sandbox']})
@@ -114,7 +120,6 @@ const parse = async date_string => {
 
     } catch (e) {
         await browser.close()
-        functions.logger.error("Crawling Failed! : " + e.toString(), {structuredData: true});
         console.error("Crawling Failed! : " + e.toString(), {structuredData: true});
     }
 }
@@ -138,11 +143,11 @@ const updater = async (days) => {
                 let weight_view = my_prev_obj["weight_view"] ? my_prev_obj["weight_view"] * 2 : 1
 
                 if(instant_popular > weight_popular * user_pref["thres_popular"]){
-                    await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML"})
                     my_prev_obj.weight_popular = weight_popular
                 }
                 while(time_to_some_views < user_pref["thres_time"] && i[3] > weight_view * user_pref["min_view"]){
-                    await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${i[0]}</a>\n`, {parse_mode: "HTML"})
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML"})
                     my_prev_obj.weight_view = weight_view
                     weight_view *= 2
                 }
@@ -182,7 +187,7 @@ const top_notice = async (st, ed, days) => {
     let cnt = st
     if(db) {
         for (let j of db.sort((a, b) => glv(b) - glv(a)).slice(st - 1, ed)) {
-            stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${j["title"]}</a>\n`
+            stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${escapeHtml(j["title"])}</a>\n`
             cnt++
         }
     }

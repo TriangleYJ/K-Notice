@@ -9,6 +9,12 @@ COPY . .
 # chromium 설치
 RUN apk add --no-cache udev ttf-freefont chromium
 
+# 한글 폰트 처리
+RUN mkdir /usr/share/fonts/nanumfont
+RUN wget http://cdn.naver.com/naver/NanumFont/fontfiles/NanumFont_TTF_ALL.zip
+RUN unzip NanumFont_TTF_ALL.zip -d /usr/share/fonts/nanumfont
+RUN fc-cache -f -v
+
 # 앱 디렉토리로 다시 이동
 RUN cd /usr/src/app
 # npm install 시 Chromium 다운로드 제외 처리

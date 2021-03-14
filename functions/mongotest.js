@@ -1,3 +1,5 @@
+//TODO: DB setting
+
 const mongoose = require('mongoose');
 const db = mongoose.connection;
 const my_db = require("./kaist-notice-default-rtdb-export.json");

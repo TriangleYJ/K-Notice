@@ -13,7 +13,6 @@
     "node-telegram-bot-api": "^0.51.0",
     "puppeteer": "^5.5.0"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "private": true
 }

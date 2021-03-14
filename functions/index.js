@@ -184,33 +184,50 @@ const top_notice = async (st, ed, days) => {
 
     const db = await Notice.find({date: {$gte: sdf(date_string)}})
     let stringBuilder = ""
+    let my_board = [[], [], []]
     let cnt = st
     if(db) {
         for (let j of db.sort((a, b) => glv(b) - glv(a)).slice(st - 1, ed)) {
             stringBuilder += `${cnt}. [${glv(j)}회] <a href="https://portal.kaist.ac.kr${j["href"]}">${escapeHtml(j["title"])}</a>\n`
+            if((cnt-1)%10 >= 5) my_board[1].push({text: cnt, callback_data: 'view' + j["href"]})
+            else my_board[0].push({text: cnt, callback_data: 'view' + j["href"]})
             cnt++
         }
     }
 
-    if (cnt === st) return "더이상 존재하지 않습니다!"
-    if (cnt === ed + 1) stringBuilder += `다음 페이지 : /next${days}_${cnt}_${cnt + (ed - st)}`
-    return stringBuilder
+    if (cnt === st) stringBuilder = "더이상 존재하지 않습니다!"
+    //if (cnt === ed + 1) stringBuilder += `다음 페이지 : /next${days}_${cnt}_${cnt + (ed - st)}`
+    if(cnt > 11) my_board[2].push({ text: '이전 페이지', callback_data: `next${days}_${st - 10}_${st - 1}`})
+    if(cnt <= db.length) my_board[2].push({ text: '다음 페이지', callback_data: `next${days}_${cnt}_${cnt + (ed - st)}`})
+    let option = {
+        reply_markup: JSON.stringify({
+            inline_keyboard: my_board
+        }),
+        parse_mode: "HTML"
+    };
+    return {
+        msg: stringBuilder,
+        option: option
+    };
 }
 
 
 const main = async () => {
     await bot.sendMessage(MY_CHAT_ID, "하루 동안 가장 인기있었던 공지입니다.")
-    await bot.sendMessage(MY_CHAT_ID, await top_notice(1, 10, 1), {parse_mode: "HTML"})
+    const tn = await top_notice(1, 10, 1)
+    await bot.sendMessage(MY_CHAT_ID, tn.msg, tn.option)
     return null;
 }
 
 bot.onText(/\/next(.+)_(.+)_(.+)/, async (msg, match) => {
-    await bot.sendMessage(MY_CHAT_ID, await top_notice(parseInt(match[2]), parseInt(match[3]),parseInt(match[1])), {parse_mode: "HTML"});
+    const tn = await top_notice(parseInt(match[2]), parseInt(match[3]),parseInt(match[1]))
+    await bot.sendMessage(MY_CHAT_ID, tn.msg, tn.option);
 });
 
 bot.onText(/n (.+)/g, async (msg, match) => {
     bot.sendMessage(MY_CHAT_ID, `${match[1]}일 동안 가장 인기있었던 공지입니다.`)
-    bot.sendMessage(MY_CHAT_ID, await top_notice(1, 10, parseInt(match[1])), {parse_mode: "HTML"})
+    const tn = await top_notice(1, 10, parseInt(match[1]))
+    bot.sendMessage(MY_CHAT_ID, tn.msg, tn.option)
 })
 
 
@@ -236,3 +253,44 @@ Notice.exists({}, (err, res) => {
         updater(14)
     }
 })
+
+const viewer = async(href) => {
+    const browser = await puppeteer.launch({executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-setuid-sandbox']})
+    const page = await browser.newPage()
+    await page.goto('https://portal.kaist.ac.kr')
+    await page.evaluate((id, pw) => {
+        document.querySelector('input[name="userId"]').value = id;
+        document.querySelector('input[name="password"]').value = pw;
+    }, MY_PORTAL_ID, MY_PORTAL_PW);
+    await page.click('a[name="btn_login"]');
+    await page.waitForSelector("#ptl_headerArea")
+    await page.click('#ptl_hearderWrap > div.ptl_homeNav > ul > li:nth-child(5) > a')
+    await page.waitForSelector('#wrap')
+    //await page.emulate(iPhone)
+    await page.goto('https://portal.kaist.ac.kr' + href)
+    await page.screenshot({
+        fullPage: true,
+        path: './viewer.jpeg'
+    })
+    await browser.close()
+    bot.sendPhoto(MY_CHAT_ID, 'viewer.jpeg')
+}
+
+bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
+    const action = callbackQuery.data;
+    const msg = callbackQuery.message;
+    const opts = {
+        chat_id: msg.chat.id,
+        message_id: msg.message_id,
+    };
+
+    if(action.substr(0, 4) === "next"){
+        const match = /next(.+)_(.+)_(.+)/.exec(action)
+        const tn = await top_notice(parseInt(match[2]), parseInt(match[3]),parseInt(match[1]))
+        await bot.editMessageText(tn.msg, {...tn.option, ...opts});
+    }
+    if(action.substr(0, 4) === "view"){
+        const match = /view(.+)/.exec(action)
+        await viewer(match[1])
+    }
+});

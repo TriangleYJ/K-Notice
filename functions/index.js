@@ -4,6 +4,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const mongoose = require('mongoose');
 
+//in dev =? change process.env to require(./credentials) / change polling / mongodb local
 const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, WEBHOOK_URL} = process.env;
 const {MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_HOST, MONGO_INITDB_DATABASE} = process.env;
 const port = process.env.PORT || 3008;
@@ -143,11 +144,11 @@ const updater = async (days) => {
                 let weight_view = my_prev_obj["weight_view"] ? my_prev_obj["weight_view"] * 2 : 1
 
                 if(instant_popular > weight_popular * user_pref["thres_popular"]){
-                    await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML"})
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 인기 급상승 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML", reply_markup: JSON.stringify({inline_keyboard: [[{text: '바로 확인하기', callback_data: 'view'+i[5]}]]})})
                     my_prev_obj.weight_popular = weight_popular
                 }
                 while(time_to_some_views < user_pref["thres_time"] && i[3] > weight_view * user_pref["min_view"]){
-                    await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML"})
+                    await bot.sendMessage(MY_CHAT_ID, `[실시간 조회수 ${weight_view * user_pref["min_view"]} 돌파 인기 공지 알림]\n[${i[3]}회] <a href="https://portal.kaist.ac.kr${i[5]}">${escapeHtml(i[0])}</a>\n`, {parse_mode: "HTML", reply_markup: JSON.stringify({inline_keyboard: [[{text: '바로 확인하기', callback_data: 'view'+i[5]}]]})})
                     my_prev_obj.weight_view = weight_view
                     weight_view *= 2
                 }
@@ -229,7 +230,6 @@ bot.onText(/n (.+)/g, async (msg, match) => {
     const tn = await top_notice(1, 10, parseInt(match[1]))
     bot.sendMessage(MY_CHAT_ID, tn.msg, tn.option)
 })
-
 
 app.post(`/webhook`, (req, res) => {
     bot.processUpdate(req.body);

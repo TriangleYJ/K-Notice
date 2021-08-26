@@ -3,9 +3,10 @@ const puppeteer = require('puppeteer');
 const TelegramBot = require('node-telegram-bot-api');
 const cron = require('node-cron');
 const mongoose = require('mongoose');
+const totp = require('totp-generator');
 
 //in dev =? change process.env to require(./credentials) / change polling / mongodb local
-const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, WEBHOOK_URL} = process.env;
+const {MY_CHAT_ID, BOT_TOKEN, MY_PORTAL_ID, MY_PORTAL_PW, MY_TOTP_KEY, WEBHOOK_URL} = process.env;
 const {MONGO_INITDB_ROOT_USERNAME, MONGO_INITDB_ROOT_PASSWORD, MONGO_HOST, MONGO_INITDB_DATABASE} = process.env;
 const port = process.env.PORT || 3008;
 
@@ -80,11 +81,15 @@ const parse = async date_string => {
         const page = await browser.newPage()
 
         await page.goto('https://portal.kaist.ac.kr')
-        await page.evaluate((id, pw) => {
-            document.querySelector('input[name="userId"]').value = id;
-            document.querySelector('input[name="password"]').value = pw;
-        }, MY_PORTAL_ID, MY_PORTAL_PW);
-        await page.click('a[name="btn_login"]');
+        await page.type('#IdInput', MY_PORTAL_ID);
+        await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li:nth-child(2) > input[type=submit]:nth-child(2)');
+        await page.type('#passwordInput', MY_PORTAL_PW);
+        await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li:nth-child(3) > input.loginbtn');
+        await page.waitForSelector('#google');
+        await page.click('#google');
+        await page.type('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li.pass > input[type=password]', totp(MY_TOTP_KEY))
+        await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li.log > input[type=submit]');
+
         await page.waitForSelector("#ptl_headerArea")
         const parser_until_date = async date => {
             let page_num = 1;
@@ -102,7 +107,9 @@ const parse = async date_string => {
                         if (col_num === "3") text = parseInt(text)
                         new_row.push(text)
                         if (col_num === "4" && date.getTime() > new Date(fds(text)).getTime()) {
-                            await browser.close()
+                            let pages = await browser.pages();
+                            await Promise.all(pages.map(page =>page.close()));
+                            await browser.close();
                             return list
                         }
                     }
@@ -112,6 +119,8 @@ const parse = async date_string => {
                 }
                 page_num++
             }
+            let pages = await browser.pages();
+            await Promise.all(pages.map(page =>page.close()));
             await browser.close()
             return list
         }
@@ -120,6 +129,8 @@ const parse = async date_string => {
         return await parser_until_date(new Date(date_string))
 
     } catch (e) {
+        let pages = await browser.pages();
+        await Promise.all(pages.map(page =>page.close()));
         await browser.close()
         console.error("Crawling Failed! : " + e.toString(), {structuredData: true});
     }
@@ -256,13 +267,16 @@ Notice.exists({}, (err, res) => {
 
 const viewer = async(href) => {
     const browser = await puppeteer.launch({executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-setuid-sandbox']})
-    const page = await browser.newPage()
-    await page.goto('https://portal.kaist.ac.kr')
-    await page.evaluate((id, pw) => {
-        document.querySelector('input[name="userId"]').value = id;
-        document.querySelector('input[name="password"]').value = pw;
-    }, MY_PORTAL_ID, MY_PORTAL_PW);
-    await page.click('a[name="btn_login"]');
+    const page = await browser.newPage();
+    await page.type('#IdInput', MY_PORTAL_ID);
+    await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li:nth-child(2) > input[type=submit]:nth-child(2)');
+    await page.type('#passwordInput', MY_PORTAL_PW);
+    await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li:nth-child(3) > input.loginbtn');
+    await page.waitForSelector('#google');
+    await page.click('#google');
+    await page.type('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li.pass > input[type=password]', totp(MY_TOTP_KEY))
+    await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li.log > input[type=submit]');
+
     await page.waitForSelector("#ptl_headerArea")
     await page.click('#ptl_hearderWrap > div.ptl_homeNav > ul > li:nth-child(5) > a')
     await page.waitForSelector('#wrap')
@@ -272,6 +286,8 @@ const viewer = async(href) => {
         fullPage: true,
         path: './viewer.jpeg'
     })
+    let pages = await browser.pages();
+    await Promise.all(pages.map(page =>page.close()));
     await browser.close()
     bot.sendPhoto(MY_CHAT_ID, 'viewer.jpeg')
 }

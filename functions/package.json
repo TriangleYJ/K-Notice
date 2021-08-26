@@ -11,7 +11,9 @@
     "mongoose": "^5.11.12",
     "node-cron": "^2.0.3",
     "node-telegram-bot-api": "^0.51.0",
-    "puppeteer": "^5.5.0"
+    "puppeteer": "^5.5.0",
+    "totp": "0.0.1",
+    "totp-generator": "0.0.9"
   },
   "devDependencies": {},
   "private": true

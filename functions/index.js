@@ -268,6 +268,7 @@ Notice.exists({}, (err, res) => {
 const viewer = async(href) => {
     const browser = await puppeteer.launch({executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-setuid-sandbox']})
     const page = await browser.newPage();
+    await page.goto('https://portal.kaist.ac.kr')
     await page.type('#IdInput', MY_PORTAL_ID);
     await page.click('body > div > div > div:nth-child(3) > div > div > fieldset > ul > li:nth-child(2) > input[type=submit]:nth-child(2)');
     await page.type('#passwordInput', MY_PORTAL_PW);
